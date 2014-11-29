@@ -1,0 +1,173 @@
+\documentclass[a4paper,spanish]{article}
+
+\usepackage{url}
+\usepackage{verbatim}
+
+\input{preambulo}
+
+\hyphenation{ob-te-ner}
+
+\begin{document}
+
+\input{caratula}
+
+%\tableofcontents
+
+%\pagebreak
+
+\section{Introducci'on}
+Que es el sudoku
+por que es interesante la resolucion
+algunos algoritmos usados para reslverlo
+
+
+aca se presenta este metodo qpara resolverlo
+\section{Desarrollo}
+
+El desarrollo de este trab\'ajo pr\'actico se puede desglosar las siguientes etapas:
+\begin{itemize}
+    \item An\'alisis de la gram\'atica.
+    \item Dise\~no de la TDS.
+    \item Configuraci\'on del lexer.
+    \item Implementaci\'on del parser.
+    \item Anotaci\'on de la gram\'atica con los elementos de la TDS.
+\end{itemize}
+
+Para hacer esto, nos guiamos por la documentaci\'on encontrada en GnuBison. Utilizando las gu\'ias encontradas pudimos orientarnos en la tecnolog\'ia. \\
+
+El no encontrar ejemplos con explicaci'on detallada nos dificult'o la tarea de entender como se realiza la interacci'on entre \texttt{flex} y \texttt{bison}. As'i como adecuar esta interacci'on a como quer'iamos implementar el programa.
+
+Superado este aprendizaje, al menos para el alcance del \texttt{TP}, encontramos que el \texttt{bison} encontraba conflictos del tipo \texttt{reduce/reduce} en la gram'atica.
+
+Durante el desarrollo de este trabajo nuestro mayor conflicto fue resolver el problema del Dangling Else, en la entrega anterior hemos tenido inconvenientes al procesar las cadenas pertenecientes a este sub-grupo. En el siguiente inciso nos explayamos en los inconvenientes encontrados y en la soluci\'on implementada.
+
+\subsection{Dangling-Else}
+
+Para resolver el problema del Dangling Else, precisamos atravesar diversas soluciones.
+Al tiempo de la primer entrega, como pudimos observar, entregamos una implementaci\'on erronea. No procesaba correctamente cadenas que deb\'ian ser aceptadas por la gram\'atica y aceptabamos cadenas que no pertenec\'ian al lenguaje.
+
+Para resolver estos inconvenientes utilizamos, en primer instancia, la soluci\'on ad-hoc que propone Ullman en la bibliograf\'ia. Esto es, tomando la gram\'atica normal de Jay, sin modificaciones, preferir Shift ante Reduce (resolver el conflicto en tablas como se dir\'ia en el ajedrez).
+
+Cabe aclarar que esta soluci\'on no nos llev\'o a buen puerto. Al agregar las anotaciones se gener\'o un conflicto Reduce-Reduce para el cual no encontramos explicaci\'on.
+
+Adjuntamos el patch de c\'odigo en if\_statement\_ad\_hoc.patch y la salida de la compilaci\'on en if\_statement\_ad\_hoc.output solo por la curiosidad.
+
+Tuvimos un error dif\'icil de encontrar en nuestra implementaci\'on. En particular elegimos una manera de representar la gram\'atica dada de tal manera q mostraba un conflicto reduce/reduce. Para esta reentrega, investigamos y solucionamos el inconveniente. Bison, seg\'un la documentaci\'on encontrada aqu\'i (\url{http://www.gnu.org/software/bison/manual/html_node/Reduce_002fReduce.html}) explica que dada una producci\'on que presenta un conflicto reduce/reduce, se realizar\'a un look-ahead sobre la primera opci\'on. En nuestro caso era /*lambda*/ cosa que llevaba a que no se procesaran los else\_block. La soluci\'o, poner la producci\'on que reduce a lambda como \'ultima opci\'on para que Bison siempre prefiera resolver el ELSE antes que la cadena vac\'ia.
+
+\begin{verbatim}
+else_block:  
+	ELSE  {writePrettyHMTLToken($1);writeLB();writeOpenTab();} Statement {writeCloseTab();}
+	| /* LAMBDA */ 
+
+\end{verbatim}
+
+En nuestra nueva implementaci\'on resolvemos el conflicto del Dangling Else dando precedencia al else m\'as cercano. Es decir que se realizar\'a shift antes que reduce en casos como el siguiente:
+
+
+\begin{verbatim}
+void main () { 
+    if (c == 19 || p < coco) 
+        if (z != 10) 
+            pepa = 1;
+        else 
+            sarlanga = 4; 
+}
+\end{verbatim}
+
+
+Para testear esto, agregamos los siguientes casos:
+\begin{itemize}
+	\item if\_bloque\_if\_statement\_else\_bloque
+	\item if\_if\_else
+	\item if\_if\_else\_else
+	\item if\_statement
+	\item if\_statement\_if
+\end{itemize}
+Que testean variaciones de la cadena del condicional.
+
+
+
+\section{Conclusiones}
+Nos result'o muy interesante el trabajo para comprender mejor como se implementa un parser para una gram'atica. En particular como se puede implementar una \texttt{TDS}.
+Y cual es la relaci\'on entre el parser, la TDS y la gram\'atica cosa que, visto de manera solo te\'orica quedar\'ia un tanto en el aire.
+
+Una vez implementada, creamos casos de test en base a lo que seria c'odigo que deber'ia ser aceptado y c\'o que no deber'ia serlo. Definimos diferentes archivos de texto para una mejor visualizaci'on de los casos, especificando en el titulo si era caso valido o no. Los casos que pensamos nos sirvieron para darnos cuenta de que teniamos errores(algunos graves y otros bastante simples) dentro de la gram'atica introducida en jayParse.y
+
+
+\section{Modo de uso y casos de prueba}
+
+Los casos de prueba que puede encontrar en el directorio tests cubren gran parte de la gram\'atica. Estos pueden ser utilizados de la siguiente manera:
+\begin{verbatim}
+$ flex jayScan.l 
+$ bison -d jayParse.y 
+$ gcc jayParse.tab.c lex.yy.c -o parser
+$ ./parser -h
+Modo de uso: ./parse -i nombre_archivo_jay -o nombre_archivo_html
+
+-i nombre_archivo_jay	(opcional) donde nombre_archivo_jay es el nombre del archivo a procesar.
+			 Si no se especifica se toma stdin como entrada.
+
+-o nombre_archivo_html	(opcional) donde nombre_archivo_html es el nombre del archivo de salida
+			Si no se especifica se generara el archivo archivo_input+.html
+			donde archivo_input es el nombre de archivo especificado en el
+			parametro -i pero cambiando su extension a html
+			Si no se especifica archivo de entrada se utiliza stdout
+
+\end{verbatim}
+
+Pudiendo utilizar los archivos de test donde dice nombre\_archivo\_jay.
+
+Ejemplo:
+\subsection{Ejemplo de uso}
+    \begin{verbatim}
+    $ flex jayScan.l 
+    $ bison -d jayParse.y 
+    $ gcc jayParse.tab.c lex.yy.c -o parser
+    $ cat tests/caso01.txt 
+    void main () { test = 4;}
+
+    $ ./parser -i tests/caso01.txt -o caso01.html
+    Archivo de entrada: tests/caso01.txt
+    Archivo de salida: caso01.html
+    writeHTMLBeginning(); writeHTMLEnd();fclose(yyin)fclose(yyout);
+
+    $ cat caso01.html
+
+    <HTML>
+      <HEAD>
+        <LINK href="jay.css" rel="stylesheet" type="text/css"/>
+      </HEAD>
+      <BODY>
+        <SPAN class="Keyword">void</SPAN>
+        <SPAN class="Keyword">main</SPAN>
+        <SPAN class="Separator">(</SPAN>
+        <SPAN class="Separator">)</SPAN>
+        <SPAN class="Separator">{</SPAN>
+        <BR/>
+        <DIV class="CodeBlock">
+          <SPAN class="Identifier">test</SPAN>
+          <SPAN class="Operator">=</SPAN>
+          <SPAN class="Literal">4</SPAN>
+          <SPAN class="Separator">;</SPAN>
+          <BR/>
+        </DIV>
+        <BR/>
+        <SPAN class="Separator">}</SPAN>
+      </BODY>
+    </HTML>
+\end{verbatim}
+\pagebreak
+
+\section{C\'odigo}
+
+\subsection{jayScan.l}
+\verbinput{../jayScan.l}
+
+\subsection{jayParse.y}
+
+\verbinput{../jayParse.y}
+
+\subsection{parserTypes.h}
+\verbinput{../parserTypes.h}
+
+\end{document}
