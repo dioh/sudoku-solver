@@ -1,4 +1,5 @@
-sudoku = read.csv('testdata/sudoku1', header=FALSE)
+require('GenSA')
+sudoku = read.csv('~/proj/sudoku-solver/testdata/sudoku1', header=FALSE)
 delta = function (x) { length(x) - length(unique(x)) + 1}
 evaluation = function(mat){ apply(mat, 1, delta) + apply(mat, 0, delta) }
 
@@ -22,8 +23,17 @@ gen_neighbourgh = function(mat){
     tmp = mat[i_j[1], i_j[2]]
     mat[i_j[1], i_j[2]] = mat[l, k]
     mat[l, k] = tmp
-    print(paste('Cambiando [', i_j[0], i_j[2], '] por [', l, k, ']') )
+    #     print(paste('Cambiando [', i_j[0], i_j[2], '] por [', l, k, ']') )
     return (mat)
 
 }
+
+random_zero_replace_asign = function(mat){
+  N2 = dim(mat)[1]
+  ran_no_cero = matrix(lapply(
+    as.matrixmat),
+    function(x) ifelse(x==0, sample(1:N2, 1), x)), N2, N2)  
+  return(ran_no_cero)
+}
 # objte
+
