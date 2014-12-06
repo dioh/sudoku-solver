@@ -1,34 +1,42 @@
 require('GenSA')
 sudoku = read.csv('~/proj/sudoku-solver/testdata/sudoku1', header=FALSE)
-delta = function (x) { length(x) - length(unique(x)) + 1}
-evaluation = function(mat){ sum(apply(mat, MARGIN=1, delta) + apply(mat, MARGIN=2, delta)) }
-
-gen_neighbourgh = function(fixed_cells){
-  print(fixed_cells)
-    mat = sudoku
-    for (repeats in seq(1,fixed_cells)) {
-        N2 = dim(mat)[1]
-        N = sqrt(N2)
-        i_j = sample(1:N2, 2)
-        l_k = get_next_index(i_j)
-        # print('cambio')
-        # print(c(i_j))
-        # print('por')
-        # print(c(l_k))
-        if(all(i_j == l_k))
-            gen_neighbourgh(1)
-        tmp = mat[i_j[1], i_j[2]]
-        mat[i_j[1], i_j[2]] = mat[l_k[1], l_k[2]]
-        mat[l_k[1], l_k[2]] = tmp
-        assign("sudoku", mat, envir = .GlobalEnv)
-    }
-    return (evaluation(mat))
+delta = function (x) { length(x) - length(unique(x)) } 
+evaluation = function(mat){ 
+  colum = apply(mat, MARGIN=1, delta)
+  rows = apply(mat, MARGIN=2, delta)
+  return(sum(colum + rows))
 }
+fixed_cells = which(sudoku == 0, arr.ind = T)
+
+is_fixed = function(i_j){
+  any(apply(fixed_cells, 1, function(x) all(i_j == x)))
+}
+
+
+gen_neighbourgh = function(mat){
+  N2 = dim(mat)[1]
+  N = sqrt(N2)
+  i_j = sample(1:N2, 2)
+  l_k = get_next_index(i_j)
+  # print('cambio')
+  # print(c(i_j))
+  # print('por')
+  # print(c(l_k))
+  if(all(i_j == l_k) | is_fixed(i_j)){
+    return(gen_neighbourgh(mat))
+  }
+  tmp = mat[i_j[1], i_j[2]]
+  mat[i_j[1], i_j[2]] = mat[l_k[1], l_k[2]]
+  mat[l_k[1], l_k[2]] = tmp
+  return(mat)
+}
+
 get_next_index = function(i_j){ 
     # 1, 2, 3 => 1
     # 4, 5, 6 => 4
     # 7, 8, 9 => 7
 
+    N = 3
     replaces = c(1,1,1,4,4,4,7,7,7)
 
     ranges_start = c(replaces[i_j[1]], replaces[i_j[2]])
@@ -62,7 +70,53 @@ eval_next = function(mat) {
   eval = evaluation(nextt)
   return(eval)
 }
+fixed_cells = which(sudoku == 0, arr.ind = T)
+sudoku = apply(sudoku, 1:2, as.double)
+sudoku = random_zero_replace_asign(sudoku)
 
- sudoku = apply(sudoku, 1:2, as.double)
+assign('sudoku', random_zero_replace_asign(sudoku), .GlobalEnv)
+#GenSA(par=c(1,1), lower=c(1,1), upper=c(9,9), fn = gen_neighbourgh) 
 # GenSA(par=random_zero_replace_asign(sudoku),
 #       fn=eval_next, lower = rep(1, 81), upper = rep(9, 81))
+
+# soluciones = data.frame(size=0, sol = -1)
+
+# for (i in 1:50){
+# print(i)
+#   sol = LSopt(evaluation,
+#         list(x0=sudoku,
+#              neighbour = gen_neighbourgh, printDetail = F, printBar=F,
+#              nS = 100* i))$OFvalue
+#   soluciones = rbind(soluciones, cbind(size = (i * 100), sol=sol))
+# }
+
+# soluciones.TS = data.frame(size=0, sol = -1)
+
+# for (i in 1:50){
+#   print(i)
+#   sol = TAopt(evaluation,
+#               list(x0=sudoku,
+#                    neighbour = gen_neighbourgh, printDetail = F, printBar=F,
+#                    nS = 100* i))$OFvalue
+#   soluciones.TS = rbind(soluciones.TS, cbind(size = (i * 100), sol=sol))
+# }
+
+qplot(x=size, y = sol, data=soluciones[2:51,], geom=c('point', 'smooth')) + xlab('#iteraciones') +
+  ylab('Función de Costo')
+# ggsave('~/proj/sudoku-solver/latex/imgs/LSol_progresion.png')
+
+qplot(x=size, y = sol, data=soluciones.TS[2:51,], geom=c('point', 'smooth')) +
+ xlab('#iteraciones') +
+  ylab('Función de Costo')
+# ggsave('~/proj/sudoku-solver/latex/imgs/TASol_progresion.png')
+
+sudoku_sol = read.csv('~/proj/sudoku-solver/testdata/sudoku_sol', header=FALSE)
+
+evaluation(sudoku_sol)
+
+
+remove_random = function(sudoku_sol){
+  i_j = sample(1: 9, 2)
+  sudoku_sol[i_j[1], i_j[2]] = 0
+  return(sudoku_sol) 
+}
