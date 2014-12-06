@@ -2,6 +2,13 @@
 
 \usepackage{url}
 \usepackage{verbatim}
+\usepackage{tabu}
+\usepackage{float}
+\usepackage{cite}
+\usepackage[spanish]{cleveref}
+\usepackage[colorlinks]{hyperref}
+
+\bibliographystyle{unsrt}
 
 \input{preambulo}
 
@@ -12,162 +19,144 @@
 \input{caratula}
 
 %\tableofcontents
-
-%\pagebreak
-
-\section{Introducci'on}
-Que es el sudoku
-por que es interesante la resolucion
-algunos algoritmos usados para reslverlo
-
-
-aca se presenta este metodo qpara resolverlo
-\section{Desarrollo}
-
-El desarrollo de este trab\'ajo pr\'actico se puede desglosar las siguientes etapas:
-\begin{itemize}
-    \item An\'alisis de la gram\'atica.
-    \item Dise\~no de la TDS.
-    \item Configuraci\'on del lexer.
-    \item Implementaci\'on del parser.
-    \item Anotaci\'on de la gram\'atica con los elementos de la TDS.
-\end{itemize}
-
-Para hacer esto, nos guiamos por la documentaci\'on encontrada en GnuBison. Utilizando las gu\'ias encontradas pudimos orientarnos en la tecnolog\'ia. \\
-
-El no encontrar ejemplos con explicaci'on detallada nos dificult'o la tarea de entender como se realiza la interacci'on entre \texttt{flex} y \texttt{bison}. As'i como adecuar esta interacci'on a como quer'iamos implementar el programa.
-
-Superado este aprendizaje, al menos para el alcance del \texttt{TP}, encontramos que el \texttt{bison} encontraba conflictos del tipo \texttt{reduce/reduce} en la gram'atica.
-
-Durante el desarrollo de este trabajo nuestro mayor conflicto fue resolver el problema del Dangling Else, en la entrega anterior hemos tenido inconvenientes al procesar las cadenas pertenecientes a este sub-grupo. En el siguiente inciso nos explayamos en los inconvenientes encontrados y en la soluci\'on implementada.
-
-\subsection{Dangling-Else}
-
-Para resolver el problema del Dangling Else, precisamos atravesar diversas soluciones.
-Al tiempo de la primer entrega, como pudimos observar, entregamos una implementaci\'on erronea. No procesaba correctamente cadenas que deb\'ian ser aceptadas por la gram\'atica y aceptabamos cadenas que no pertenec\'ian al lenguaje.
-
-Para resolver estos inconvenientes utilizamos, en primer instancia, la soluci\'on ad-hoc que propone Ullman en la bibliograf\'ia. Esto es, tomando la gram\'atica normal de Jay, sin modificaciones, preferir Shift ante Reduce (resolver el conflicto en tablas como se dir\'ia en el ajedrez).
-
-Cabe aclarar que esta soluci\'on no nos llev\'o a buen puerto. Al agregar las anotaciones se gener\'o un conflicto Reduce-Reduce para el cual no encontramos explicaci\'on.
-
-Adjuntamos el patch de c\'odigo en if\_statement\_ad\_hoc.patch y la salida de la compilaci\'on en if\_statement\_ad\_hoc.output solo por la curiosidad.
-
-Tuvimos un error dif\'icil de encontrar en nuestra implementaci\'on. En particular elegimos una manera de representar la gram\'atica dada de tal manera q mostraba un conflicto reduce/reduce. Para esta reentrega, investigamos y solucionamos el inconveniente. Bison, seg\'un la documentaci\'on encontrada aqu\'i (\url{http://www.gnu.org/software/bison/manual/html_node/Reduce_002fReduce.html}) explica que dada una producci\'on que presenta un conflicto reduce/reduce, se realizar\'a un look-ahead sobre la primera opci\'on. En nuestro caso era /*lambda*/ cosa que llevaba a que no se procesaran los else\_block. La soluci\'o, poner la producci\'on que reduce a lambda como \'ultima opci\'on para que Bison siempre prefiera resolver el ELSE antes que la cadena vac\'ia.
-
-\begin{verbatim}
-else_block:  
-	ELSE  {writePrettyHMTLToken($1);writeLB();writeOpenTab();} Statement {writeCloseTab();}
-	| /* LAMBDA */ 
-
-\end{verbatim}
-
-En nuestra nueva implementaci\'on resolvemos el conflicto del Dangling Else dando precedencia al else m\'as cercano. Es decir que se realizar\'a shift antes que reduce en casos como el siguiente:
-
-
-\begin{verbatim}
-void main () { 
-    if (c == 19 || p < coco) 
-        if (z != 10) 
-            pepa = 1;
-        else 
-            sarlanga = 4; 
-}
-\end{verbatim}
-
-
-Para testear esto, agregamos los siguientes casos:
-\begin{itemize}
-	\item if\_bloque\_if\_statement\_else\_bloque
-	\item if\_if\_else
-	\item if\_if\_else\_else
-	\item if\_statement
-	\item if\_statement\_if
-\end{itemize}
-Que testean variaciones de la cadena del condicional.
-
-
-
-\section{Conclusiones}
-Nos result'o muy interesante el trabajo para comprender mejor como se implementa un parser para una gram'atica. En particular como se puede implementar una \texttt{TDS}.
-Y cual es la relaci\'on entre el parser, la TDS y la gram\'atica cosa que, visto de manera solo te\'orica quedar\'ia un tanto en el aire.
-
-Una vez implementada, creamos casos de test en base a lo que seria c'odigo que deber'ia ser aceptado y c\'o que no deber'ia serlo. Definimos diferentes archivos de texto para una mejor visualizaci'on de los casos, especificando en el titulo si era caso valido o no. Los casos que pensamos nos sirvieron para darnos cuenta de que teniamos errores(algunos graves y otros bastante simples) dentro de la gram'atica introducida en jayParse.y
-
-
-\section{Modo de uso y casos de prueba}
-
-Los casos de prueba que puede encontrar en el directorio tests cubren gran parte de la gram\'atica. Estos pueden ser utilizados de la siguiente manera:
-\begin{verbatim}
-$ flex jayScan.l 
-$ bison -d jayParse.y 
-$ gcc jayParse.tab.c lex.yy.c -o parser
-$ ./parser -h
-Modo de uso: ./parse -i nombre_archivo_jay -o nombre_archivo_html
-
--i nombre_archivo_jay	(opcional) donde nombre_archivo_jay es el nombre del archivo a procesar.
-			 Si no se especifica se toma stdin como entrada.
-
--o nombre_archivo_html	(opcional) donde nombre_archivo_html es el nombre del archivo de salida
-			Si no se especifica se generara el archivo archivo_input+.html
-			donde archivo_input es el nombre de archivo especificado en el
-			parametro -i pero cambiando su extension a html
-			Si no se especifica archivo de entrada se utiliza stdout
-
-\end{verbatim}
-
-Pudiendo utilizar los archivos de test donde dice nombre\_archivo\_jay.
-
-Ejemplo:
-\subsection{Ejemplo de uso}
-    \begin{verbatim}
-    $ flex jayScan.l 
-    $ bison -d jayParse.y 
-    $ gcc jayParse.tab.c lex.yy.c -o parser
-    $ cat tests/caso01.txt 
-    void main () { test = 4;}
-
-    $ ./parser -i tests/caso01.txt -o caso01.html
-    Archivo de entrada: tests/caso01.txt
-    Archivo de salida: caso01.html
-    writeHTMLBeginning(); writeHTMLEnd();fclose(yyin)fclose(yyout);
-
-    $ cat caso01.html
-
-    <HTML>
-      <HEAD>
-        <LINK href="jay.css" rel="stylesheet" type="text/css"/>
-      </HEAD>
-      <BODY>
-        <SPAN class="Keyword">void</SPAN>
-        <SPAN class="Keyword">main</SPAN>
-        <SPAN class="Separator">(</SPAN>
-        <SPAN class="Separator">)</SPAN>
-        <SPAN class="Separator">{</SPAN>
-        <BR/>
-        <DIV class="CodeBlock">
-          <SPAN class="Identifier">test</SPAN>
-          <SPAN class="Operator">=</SPAN>
-          <SPAN class="Literal">4</SPAN>
-          <SPAN class="Separator">;</SPAN>
-          <BR/>
-        </DIV>
-        <BR/>
-        <SPAN class="Separator">}</SPAN>
-      </BODY>
-    </HTML>
-\end{verbatim}
+\tableofcontents
 \pagebreak
 
-\section{C\'odigo}
+%\pagebreak
+\section{Resumen}
+En el siguiente trabajo práctico resolveremos un problema NP-Completo llamado
+Sudoku. Mostraremos una estrategia de resolución exacta y una metaheurística
+para resolver el problema. Finalmente mostraremos los resultados de aplicar la
+metaheurística.
 
-\subsection{jayScan.l}
-\verbinput{../jayScan.l}
 
-\subsection{jayParse.y}
+\section{Introducción}
 
-\verbinput{../jayParse.y}
+El juego \emph{Sudoku} es un rompecabezas lógico que trata la ubicación de
+números en una grilla de $N^2 x N^2$. El objetivo es completar las celdas
+faltantes con valores de $1..N^2$. La grilla se subdivide en $N$ cuadrantes de
+$N x N$  cumpliendo con las siguientes reglas:
 
-\subsection{parserTypes.h}
-\verbinput{../parserTypes.h}
+\begin{enumerate}
+    \item Cada fila debe tener los valores de 1 a N una única vez
+    \item Cada columna debe tener los valores de 1 a N una única vez
+    \item Cada subcuadrante de $NxN$ debe tener los valores de 1 a N una única vez
+\end{enumerate}
+
+Un ejemplo de este tipo de problemas tan conocido se observa en la tabla
+\ref{tab:sudoku_ejemplo}
+
+\begin{figure}[H]
+    \begin{center}
+        \begin{tabular}{||c | c | c|| c| c| c|| c| c| c||}
+            \hline
+            \hline
+            &   &   &   &   &   &   &   &   \\
+            \hline
+            &   &   & 4 &   &   & 3 &   &   \\
+            \hline
+            6 &   &   &   &   & 7 &   &   &   \\
+            \hline
+            \hline
+            & 5 &   &   &   & 4 &   &   &   \\
+            \hline
+            4 &   &   &   & 1 &   &   &   & 5 \\
+            \hline
+            & 3 & 1 & 7 &   & 9 & 8 &   &   \\
+            \hline
+            \hline
+            &   & 3 &   &   &   &   & 5 &   \\
+            \hline
+            & 6 &   & 8 &   &   & 4 &   & 9 \\
+            \hline
+            9 & 8 &   &   & 7 &   & 1 & 6 &   \\
+            \hline
+            \hline
+
+        \end{tabular}
+        \label{tab:sudoku_ejemplo}
+        \caption{Sudoku ejemplo}
+    \end{center}
+\end{figure}
+
+
+La resolución de este problema aplicando reglas lógicas se puede ver en los
+metodos Swordfish  o X-Wings.
+
+Notoriamente en los últimos tiempos, han surgido diversos métodos para resolver
+de manera heurística el problema.
+
+Los métodos de resolución exacta para este problema con \emph{Fuerza bruta}
+consiste en asignar posibles valores iterativamente a las celdas e ir
+verificando si el sudoku verifica las reglas a medida que se siguen completando
+los blancos.
+
+Este esquema es costoso y a menudo se utiliza con backtracking.
+
+
+En la actualidad se han encontrado avances en la resolución de Sudoku utilizando
+algorítmos genéticos \cite{mantere2007solving}, Búsqueda harmónica
+\cite{geem2007harmony}, SAT-Solving \cite{lynce2006sudoku} y finalmente
+Simulated Annealing \cite{lewis2007metaheuristics}.
+
+
+En este trabajo nos centraremos en un acercamiento de búsqueda local comparando
+los métodos Búsqueda local\cite{aarts2003local} y Threshold
+Accepting\cite{dueck1990threshold} con lo expresado por el autor de
+\cite{lewis2007metaheuristics}.
+
+\section{Búsqueda Local}
+
+Supongamos que tenemos un problema al que queremos encontrarle una solución
+óptima, este problema toma diversos parámetros y ante cada instanciación
+devuelve una solución que puede ser correcta en terminos de las restricciones
+del problema, puede ser óptima en terminos de ser la mejor solucion, o puede ser
+ni una ni la otra. En este último caso, deberemos evaluar si siguiendo por esa
+solución parcial del problema alcanzaremos una solución que sea a la vez
+correcta y óptima.
+
+Las soluciones factibles definen el espacio de soluciones que verifican ciertas
+condiciones, dentro de las que nos mantendremos si violar las restricciones del
+problema.
+
+Una solución óptima puede no ser siempre alcanzable y en ese caso se busca la
+mejor solución. Se dice que una solución $S_1$ es mejor que otra solución $S_2$ si
+dada una función objetivo  que toma instancias de solución nos permite
+compararlas para determinar si una es mejor que la otra.
+\begin{equation}
+    f(S_1) < f(S_2) 
+\end{equation}
+
+Para poder recorrer el espacio de soluciones del problema, definimos una función
+de vecindad que dada una solución inicial $S_i$ del problema nos devuelve una
+solución $S$.
+
+
+El método de Búsqueda local entonces, itera sobre el espacio de soluciones
+buscando en cada paso obtener una mejor solución parcial hasta alcanzar un
+mínimo. Luego de la estabilización, este se detiene.
+
+¿Qué sucede si el método no alcanzó el mínimo absoluto? Este se quedó estancado
+en una solución que no se encuentra cercana al valor óptimo y se estancará.
+
+Es por este motivo que se determinan optimizaciones a Búsqueda Local, como
+pueden ser Simmulating annealing, Hill Climbing, Tabú Search o Threshold
+Accepting.
+
+\emph{Threshold Accepting} en contraposición a \emph{Búsqueda Local} permite
+movimientos a soluciones cuya función objetivo no necesariamente mejora. Esto le
+permite salir de los mínimos locales. Al igual que en búsqueda local, es
+necesario definir la función objetivo y la función para obtener el próximo
+vecino, pero también requiere definir los umbrales ante los cuales se aceptan
+evaluaciones de la función de objetivo que son peores a la solución actual.
+A medida que pasan las iteraciones, el valor umbral disminuye haciendo que el
+algoritmo se comporte identicamente a búsqueda local.
+
+
+\section{Desarrollo}
+
+El problema 
+
+\bibliography{citas}
 
 \end{document}
