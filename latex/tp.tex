@@ -31,6 +31,7 @@ metaheurística.
 
 
 \section{Introducción}
+\label{sec:intro}
 
 El juego \emph{Sudoku} es un rompecabezas lógico que trata la ubicación de
 números en una grilla de $N^2 x N^2$. El objetivo es completar las celdas
@@ -38,6 +39,8 @@ faltantes con valores de $1..N^2$. La grilla se subdivide en $N$ cuadrantes de
 $N x N$  cumpliendo con las siguientes reglas:
 
 \begin{enumerate}
+        \label{enum:principios}
+
     \item Cada fila debe tener los valores de 1 a N una única vez
     \item Cada columna debe tener los valores de 1 a N una única vez
     \item Cada subcuadrante de $NxN$ debe tener los valores de 1 a N una única vez
@@ -155,7 +158,146 @@ algoritmo se comporte identicamente a búsqueda local.
 
 \section{Desarrollo}
 
-El problema 
+
+En la sección anterior discutimos dos metaheurísticas de búsqueda local, ambas
+precisan la definición de la función objetivo y la función de vecindad.
+
+\subsection{Solución inicial}
+
+Nuestra solución inicial está definida de manera que no se rompa la regla 3
+definida en las reglas de sudoku. De esta manera asignaremos valores del 1 al
+$N^2$ en cada cuadrante de $NxN$ sin que se repitan.
+
+Así buscaremos mejorar nuestra solución hasta que se cumplan las reglas 1 y 2. 
+
+\subsection{Función objetivo}
+
+Definiremos la función objetivo como la suma de la cantidad de elementos
+repetidos por fila y columna.  
+Esta función vale cero cuando la solución del sudoku es correcta.
+
+\subsection{Función de vecindad}
+
+Definimos nuestra función de vecindad que toma una matriz sudoku como fue
+definida en \ref{sec:intro}.
+Intercambiaremos un valor (seleccionado al azar) dentro de la matriz por otro
+dentro del mismo cuadrante, también seleccionado al azar. Tendremos cuidado en
+no intercambiar los valores que ya vinieron fijos en el sudoku de entrada.
+
+
+\subsection{Casos de prueba}
+
+
+Para evaluar el comportamiento de ambos algorítmos utilizamos casos de prueba
+generados con la aplicación \emph{qqwing}. Este nos permite generar tableros
+sudoku de distinta dificultad.
+
+Para esto generamos veinte tableros de cada tipo de dificultad para poder
+evaluar el comportamiento de ámbos algorítmos y la asignación reportada por cada
+uno.
+
+Para las figuras  \ref{img:histo_easy}, \ref{img:histo_med} y
+\ref{img:histo_hard}, corrimos ambos algoritmos con un set de 20 instancias de
+sudoku generadas al azar para determinar cual es la eficacia del altorítmo para
+3000 iteraciones (este valor se determinó empiricamente en base a esperimentos
+anteriores).
+Podemos observar la cantidad de soluciones óptimas que ha obtenido cada
+algorítmo. Observamos que Threshold Accepting supera a Búsqueda local por más de
+un 50\%.
+
+También se observa que la convergencia de las soluciones es buena, es decir que
+todos los valores que se han obtenido están en un entorno cercano a la solución
+óptima.
+
+
+\begin{center}
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{imgs/problemas_easy_histo.png}
+        \caption{Histograma asignación Búsqueda local (LS) y Threshold
+        Accepting (TA) para el conjunto de problemas fácil)}
+        \label{img:histo_easy}
+    \end{figure}
+\end{center}
+\begin{center}
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{imgs/problemas_med_histo.png}
+        \caption{Histograma asignación Búsqueda local (LS) y Threshold
+        Accepting (TA) para el conjunto de problemas mediano}
+        \label{img:histo_med}
+    \end{figure}
+\end{center}
+\begin{center}
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{imgs/problemas_hard_histo.png}
+        \caption{Histograma asignación Búsqueda local (LS) y Threshold
+        Accepting (TA) para el conjunto de problemas difícil}
+        \label{img:histo_hard}
+    \end{figure}
+\end{center}
+
+También observamos que en \ref{img:histo_med} la obtención del óptimo es mucho
+mayor. Cosa que no se reproduce en \ref{img:histo_easy} ni en
+\ref{img:histo_hard}. Esto nos muestra que no depende de la facilidad de
+resolución del problema (en términos lógico deductivos) sino más bien en la
+distribución de los vecinos.
+
+Si observamos el comportamiento de los algorítmos con un tablero fijo y variando
+la cantidad de iteraciones que precisa para alcanzar el óptimo obtenemos las
+figuras \ref{img:prog_ls} y \ref{img:prog_ta}. Para esto se generaron 50
+corridas de asignacion variando la cantidad de iteraciones admitidas para el
+algorítmo de 100 a 3000.
+
+Las figuras presentan las medias y varianzas observacionales de los
+experimentos.
+
+
+\begin{center}
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{imgs/BLsol_progresion.png}
+        \caption{Progresión de parámetro máxima cantidad de iteraciones para Búsqueda Local}
+        \label{img:prog_ls}
+    \end{figure}
+\end{center}
+
+
+\begin{center}
+    \begin{figure}[H]
+        \includegraphics[width=\textwidth]{imgs/TAsol_progresion.png}
+        \caption{Progresión de parámetro máxima cantidad de iteraciones para
+        Threshold Accepting}
+        \label{img:prog_ta}
+    \end{figure}
+\end{center}
+
+Determinamos que los algorítmos se estabilizan luego de las 3000 iteraciones
+aunque la varianza para la asignación es muy elevada. Esto nos indica que el
+espacio de soluciones es muy grande y por lo tanto en algunos casos los mínimos locales
+alcanzados son dificiles de sobrellevar.
+
+
+
+\section{Discusión}
+
+En este trabajo experimentamos con la resolución del problema de Sudoku con dos
+heurísticas distintas de búsqueda local. Utilizamos el esquema \textit{puro} de
+búsqueda local y una modificación \emph{Threshold Accepting} para contrastar los
+resultados y medir la eficacia de cada algorítmo.
+
+Encontramos que Threshold Accepting resuelve más instancias del problema que
+Búsqueda local con una penalidad en cantidad de operaciones.
+
+Encontramos que no hay relación entre la dificultad de resolver los problemas de
+manera lógico deductivo con la resolución algorítmica utilizando estos métodos.
+
+La facilidad de implementación de estos algorítmos los hacen excelentes
+candidatos para poder determinar una solución inicial para un problema
+combinatorio de estas características. Sin embargo es probable que no encuentren
+el mínimo global dado las limitaciones que presentan en su diseño.
+
+
+Para esta instancia particular, búsqueda local mejora la solución del problema
+de manera $e^-1$.
+Para Threshold Accepting 
 
 \bibliography{citas}
 
