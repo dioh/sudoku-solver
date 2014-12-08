@@ -1,12 +1,13 @@
 \documentclass[a4paper,spanish]{article}
 
 \usepackage{url}
-\usepackage{verbatim}
 \usepackage{tabu}
 \usepackage{float}
 \usepackage{cite}
 \usepackage[spanish]{cleveref}
 \usepackage[colorlinks]{hyperref}
+\usepackage{fancyvrb}
+
 
 \bibliographystyle{unsrt}
 
@@ -34,12 +35,13 @@ metaheurística.
 \label{sec:intro}
 
 El juego \emph{Sudoku} es un rompecabezas lógico que trata la ubicación de
-números en una grilla de $N^2 x N^2$. El objetivo es completar las celdas
+números en una grilla de $N^2 x N^2$. Este tiene celdas con valores ya fijados y
+el objetivo es completar las celdas
 faltantes con valores de $1..N^2$. La grilla se subdivide en $N$ cuadrantes de
-$N x N$  cumpliendo con las siguientes reglas:
+$N x N$  y se debe completar cumpliendo con las siguientes reglas:
 
 \begin{enumerate}
-        \label{enum:principios}
+    \label{enum:principios}
 
     \item Cada fila debe tener los valores de 1 a N una única vez
     \item Cada columna debe tener los valores de 1 a N una única vez
@@ -119,11 +121,11 @@ solución parcial del problema alcanzaremos una solución que sea a la vez
 correcta y óptima.
 
 Las soluciones factibles definen el espacio de soluciones que verifican ciertas
-condiciones, dentro de las que nos mantendremos si violar las restricciones del
+condiciones, dentro de las que nos mantendremos sin violar las restricciones del
 problema.
 
 Una solución óptima puede no ser siempre alcanzable y en ese caso se busca la
-mejor solución. Se dice que una solución $S_1$ es mejor que otra solución $S_2$ si
+mejor solución. Se dice que una solución $S_1$ es mejor que solución $S_2$ si
 dada una función objetivo  que toma instancias de solución nos permite
 compararlas para determinar si una es mejor que la otra.
 \begin{equation}
@@ -139,8 +141,9 @@ El método de Búsqueda local entonces, itera sobre el espacio de soluciones
 buscando en cada paso obtener una mejor solución parcial hasta alcanzar un
 mínimo. Luego de la estabilización, este se detiene.
 
-¿Qué sucede si el método no alcanzó el mínimo absoluto? Este se quedó estancado
-en una solución que no se encuentra cercana al valor óptimo y se estancará.
+¿Qué sucede si el método no alcanzó el mínimo absoluto? Este estanca
+en una solución que no se encuentra cercana al valor óptimo y terminará
+arrojando un mínimo local.
 
 Es por este motivo que se determinan optimizaciones a Búsqueda Local, como
 pueden ser Simmulating annealing, Hill Climbing, Tabú Search o Threshold
@@ -162,6 +165,10 @@ algoritmo se comporte identicamente a búsqueda local.
 En la sección anterior discutimos dos metaheurísticas de búsqueda local, ambas
 precisan la definición de la función objetivo y la función de vecindad.
 
+
+Ahora daremos definiciones para ellas:
+
+
 \subsection{Solución inicial}
 
 Nuestra solución inicial está definida de manera que no se rompa la regla 3
@@ -170,11 +177,57 @@ $N^2$ en cada cuadrante de $NxN$ sin que se repitan.
 
 Así buscaremos mejorar nuestra solución hasta que se cumplan las reglas 1 y 2. 
 
+\begin{Verbatim}[samepage=true]
+function(mat){
+  // Iteramos por subcuadrantes en una matriz de 9x9
+  for(i in c(1,4,7)){ 
+    for (j in c(1,4,7)){
+      square = mat[seq(i,i+(N-1)),seq(j,j+(N-1))]
+      used_nums = square[square>0] // obtenemos las celdas utilizadas
+      all_nums = 1:N2
+      // nos quedamos con los numeros faltantes en el subcuadrante
+      fillers = all_nums[!all_nums %in% used_nums] 
+      // Asignamos a los
+      // valores en 0, una permitación al azar de los numeros sin usar
+      square[square == 0] = sample(fillers, length(fillers)) 
+      // Reemplazamos el subcuadrante
+      mat[seq(i,i+(N-1)),seq(j,j+(N-1))] = square 
+    }
+  }
+  return(mat)
+}
+    
+\end{Verbatim}
+
+
+
 \subsection{Función objetivo}
 
 Definiremos la función objetivo como la suma de la cantidad de elementos
 repetidos por fila y columna.  
 Esta función vale cero cuando la solución del sudoku es correcta.
+
+
+Definimos la función delta de la siguiente manera. Toma un vector de valores y
+devuelve la cantidad de elementos repetidos.
+
+\begin{Verbatim}[samepage=true]
+delta = function (x) {
+    length(x) - length(unique(x))
+} 
+\end{Verbatim}
+
+Entonces la función objetivo se define como la suma de la función delta para
+cada fila y para cada columna de la siguiente manera:
+
+\begin{Verbatim}[samepage=true]
+function(mat){ 
+  colum = apply(mat, POR_COLUMNAS, delta)
+  rows = apply(mat, POR_FILAS, delta)
+  return(sum(colum + rows))
+} 
+\end{Verbatim}
+
 
 \subsection{Función de vecindad}
 
@@ -184,17 +237,42 @@ Intercambiaremos un valor (seleccionado al azar) dentro de la matriz por otro
 dentro del mismo cuadrante, también seleccionado al azar. Tendremos cuidado en
 no intercambiar los valores que ya vinieron fijos en el sudoku de entrada.
 
+\begin{Verbatim}[samepage=true]
+function(mat){
+  // obtenemos dos indices al azar dentro del rango de la matriz
+  i_j = sample(1:N2, 2) 
+  // Otenemos dos indices al azar dentro del mismo subcuadrante
+  l_k = get_next_index(i_j)
+  // si son iguales o es una celda fija generamos otro par de indices
+  if(all(i_j == l_k) | is_fixed(i_j)){
+    return(gen_neighbourgh(mat))
+  }
+  // Si obtuvimos indices validos intercambiamos los valores y retornamos la
+  matriz
+  tmp = mat[i_j[1], i_j[2]]
+  mat[i_j[1], i_j[2]] = mat[l_k[1], l_k[2]]
+  mat[l_k[1], l_k[2]] = tmp
+  return(mat)
+}
+
+    
+\end{Verbatim}
 
 \subsection{Casos de prueba}
 
 
 Para evaluar el comportamiento de ambos algorítmos utilizamos casos de prueba
-generados con la aplicación \emph{qqwing}. Este nos permite generar tableros
+generados con la aplicación \emph{qqwing}\footnote{\url{http://qqwing.com/}}. Este nos permite generar tableros
 sudoku de distinta dificultad.
 
 Para esto generamos veinte tableros de cada tipo de dificultad para poder
 evaluar el comportamiento de ámbos algorítmos y la asignación reportada por cada
 uno.
+
+Los tableros generados fueron del tipo facil, medio y difícil. Cada uno está
+determinado por la dificultad de resolución lógico deductiva. Esto lo hicimos de
+esta manera para poder mostrar la relación entre este tipo de dificultad y la
+corrida de los algoritmos.
 
 Para las figuras  \ref{img:histo_easy}, \ref{img:histo_med} y
 \ref{img:histo_hard}, corrimos ambos algoritmos con un set de 20 instancias de
@@ -211,7 +289,7 @@ todos los valores que se han obtenido están en un entorno cercano a la solució
 
 
 \begin{center}
-    \begin{figure}[H]
+    \begin{figure}
         \includegraphics[width=\textwidth]{imgs/problemas_easy_histo.png}
         \caption{Histograma asignación Búsqueda local (LS) y Threshold
         Accepting (TA) para el conjunto de problemas fácil)}
@@ -219,7 +297,7 @@ todos los valores que se han obtenido están en un entorno cercano a la solució
     \end{figure}
 \end{center}
 \begin{center}
-    \begin{figure}[H]
+    \begin{figure}
         \includegraphics[width=\textwidth]{imgs/problemas_med_histo.png}
         \caption{Histograma asignación Búsqueda local (LS) y Threshold
         Accepting (TA) para el conjunto de problemas mediano}
@@ -227,7 +305,7 @@ todos los valores que se han obtenido están en un entorno cercano a la solució
     \end{figure}
 \end{center}
 \begin{center}
-    \begin{figure}[H]
+    \begin{figure}
         \includegraphics[width=\textwidth]{imgs/problemas_hard_histo.png}
         \caption{Histograma asignación Búsqueda local (LS) y Threshold
         Accepting (TA) para el conjunto de problemas difícil}
@@ -294,10 +372,6 @@ candidatos para poder determinar una solución inicial para un problema
 combinatorio de estas características. Sin embargo es probable que no encuentren
 el mínimo global dado las limitaciones que presentan en su diseño.
 
-
-Para esta instancia particular, búsqueda local mejora la solución del problema
-de manera $e^-1$.
-Para Threshold Accepting 
 
 \bibliography{citas}
 
